@@ -5,7 +5,7 @@ import numpy as np
 import SimpleITK as sitk
 import matplotlib.pyplot as plt
 
-def segment_cardiac_echo(frame, standardized=False):
+def segment_cardiac_echo(frame, standardized=False, threshold_min=29):
     """
     code to segment just the ultrasound image of the cardiac ultrasound frames
     input:
@@ -14,14 +14,17 @@ def segment_cardiac_echo(frame, standardized=False):
     output:
         frame_crop: segmented cardiac ultrasound
     """
-
     if standardized:  # if it's a standarized ultrasound, just crop a rectangle
         # adding a normalization step in the middle so that the ultrasound isn't as dark
         frame_h = int(frame.shape[0] * 0.1)
         frame_w = int(frame.shape[1] * 0.25)
         frame_crop = frame[frame_h:-frame_h, frame_w:-frame_w]
     else:  # if not standardized, use James' code - need some cleaning up
-        ret2, threshhold = cv2.threshold(frame, 29, 255, 0)
+        # remove the top 10% to avoid the bar
+        frame_h = int(frame.shape[0] * 0.1)
+        frame = frame[frame_h:, :]
+        # James' code
+        ret2, threshhold = cv2.threshold(frame, threshold_min, 255, 0)
         contours, hierarchy = cv2.findContours(threshhold, 1, 2)  # need to change this so it picks up more things
         # Approx contour
         cnt = contours[0]
@@ -38,8 +41,7 @@ def segment_cardiac_echo(frame, standardized=False):
         approximation = cv2.approxPolyDP(cnt, epsilon, True)
         convex_hull = cv2.convexHull(cnt)
         contour_mask = np.zeros(frame.shape, np.uint8)
-        contour_mask = cv2.drawContours(contour_mask, [convex_hull], 0, 255, -1)
-
+        contour_mask = cv2.drawContours(contour_mask, [convex_hull], 0, 1, -1)  # changed James' code so that multiplying works
         frame_crop = frame * contour_mask
 
     return frame_crop
