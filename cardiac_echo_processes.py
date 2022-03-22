@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 def segment_cardiac_echo(frame, standardized=False):
     """
     code to segment just the ultrasound image of the cardiac ultrasound frames
-
     input:
         frame: the raw ultrasound array frame
         standardized: option for a standardized dataset input
@@ -45,27 +44,55 @@ def segment_cardiac_echo(frame, standardized=False):
 
     return frame_crop
 
-def ablate_cardiac_echo(frame_crop, quadrant=None):
+def ablate_cardiac_echo(frame_center, quadrant=None):
     """
     code to remove different quadrants of the cardiac ultrasound frames
-
     input:
         frame_crop: the raw ultrasound array to crop a quadrant from
         quadrant: option to remove a quadrant of the image for ablation study
     output:
         frame_crop: segmented cardiac ultrasound (w/w0 quadrant ablation)
     """
-
+    frame_crop = frame_center.copy()
     if quadrant != None:
         frame_center_h = int(frame_crop.shape[0] * 0.6)
         frame_center_w = int(frame_crop.shape[1] * 0.6)
-        if quadrant == 1:
-            frame_crop[:frame_center_h, :frame_center_w] = 0
-        elif quadrant == 2:
-            frame_crop[frame_center_h:, :frame_center_w] = 0
-        elif quadrant == 3:
-            frame_crop[:frame_center_h, frame_center_w:] = 0
-        else:
-            frame_crop[frame_center_h:, frame_center_w:] = 0
-
+        if quadrant in [1, 2, 3, 4]:  # removing a quadrant
+            if quadrant == 1:
+                frame_crop[:frame_center_h, :frame_center_w] = 0
+            elif quadrant == 2:
+                frame_crop[frame_center_h:, :frame_center_w] = 0
+            elif quadrant == 3:
+                frame_crop[:frame_center_h, frame_center_w:] = 0
+            else:
+                frame_crop[frame_center_h:, frame_center_w:] = 0
+        elif quadrant in [5, 6, 7, 8]:  # keeping only the quadrant
+            zeros = np.zeros(frame_crop.shape)
+            if quadrant == 5:
+                zeros[:frame_center_h, :frame_center_w] = 1
+            elif quadrant == 6:
+                zeros[frame_center_h:, :frame_center_w] = 1
+            elif quadrant == 7:
+                zeros[:frame_center_h, frame_center_w:] = 1
+            else:
+                zeros[frame_center_h:, frame_center_w:] = 1
+            frame_crop = frame_crop * zeros
+        else:  # this is removing or keeping the cross only
+            frame_center_h_buffer = int(frame_crop.shape[0] * 0.05)
+            frame_center_w_buffer = int(frame_crop.shape[1] * 0.05)
+            if quadrant == 'cross_only':  # only keeping the cross
+                ones = np.ones(frame_crop.shape)
+                ones[:frame_center_h-frame_center_h_buffer, :frame_center_w-frame_center_w_buffer] = 0
+                ones[frame_center_h+frame_center_h_buffer:, :frame_center_w-frame_center_w_buffer] = 0
+                ones[:frame_center_h-frame_center_h_buffer, frame_center_w+frame_center_w_buffer:] = 0
+                ones[frame_center_h+frame_center_h_buffer:, frame_center_w+frame_center_w_buffer:] = 0
+                frame_crop = frame_crop * ones
+            else:  # removing the cross only
+                zeros = np.zeros(frame_crop.shape)
+                zeros[:frame_center_h-frame_center_h_buffer, :frame_center_w-frame_center_w_buffer] = 1
+                zeros[frame_center_h+frame_center_h_buffer:, :frame_center_w-frame_center_w_buffer] = 1
+                zeros[:frame_center_h-frame_center_h_buffer, frame_center_w+frame_center_w_buffer:] = 1
+                zeros[frame_center_h+frame_center_h_buffer:, frame_center_w+frame_center_w_buffer:] = 1
+                frame_crop = frame_crop * zeros
+                
     return frame_crop
